@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>将棋盤面シミュレーター</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .board-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px auto;
+            gap: 20px;
+        }
+        .board-wrapper {
+            display: flex;
+            flex-direction: column;
+        }
+        .captured-pieces {
+            display: flex;
+            flex-direction: column;
+        }
+        .captured-box {
+            padding: 15px;
+            border: 2px solid #8B4513;
+            border-radius: 8px;
+            background: #FFF8DC;
+            min-width: 150px;
+        }
+        .captured-box h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+        .captured-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            min-height: 30px;
+        }
+        .captured-piece {
+            font-size: 18px;
+            font-weight: bold;
+            padding: 3px 8px;
+            background: white;
+            border: 1px solid #8B4513;
+            border-radius: 4px;
+        }
+        .opponent-captured {
+            align-self: flex-start;
+        }
+        .player-captured {
+            align-self: flex-end;
+        }
+        .board-with-labels {
+            display: flex;
+            align-items: center;
+        }
+        .col-labels {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 5px;
+            margin-left: 35px;
+        }
+        .col-label {
+            width: 50px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+            color: #333;
+        }
+        .row-labels {
+            display: flex;
+            flex-direction: column;
+            margin-right: 5px;
+        }
+        .row-label {
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            color: #333;
+            width: 30px;
+        }
+        .board {
+            border: 3px solid #8B4513;
+            background: #DEB887;
+        }
+        .row {
+            display: flex;
+        }
+        .cell {
+            width: 50px;
+            height: 50px;
+            border: 1px solid #8B4513;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            background: #F5DEB3;
+        }
+        .input-area {
+            margin: 20px 0;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 10px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 5px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .save-btn {
+            background: #2196F3;
+        }
+        .save-btn:hover {
+            background: #0b7dda;
+        }
+        .clear-btn {
+            background: #f44336;
+        }
+        .clear-btn:hover {
+            background: #da190b;
+        }
+        .info {
+            margin: 10px 0;
+            padding: 10px;
+            background: #e3f2fd;
+            border-radius: 4px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background: white;
+            margin: 15% auto;
+            padding: 30px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 500px;
+            text-align: center;
+        }
+        .choice-btn {
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 18px;
+            background: #FF9800;
+        }
+        .choice-btn:hover {
+            background: #F57C00;
+        }
+        .error {
+            color: red;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .player {
+            color: #2196F3;
+            font-weight: bold;
+        }
+        .opponent {
+            color: #f44336;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>将棋盤面シミュレーター</h1>
+        
+        <div class="info">
+            <strong>使い方:</strong> 棋譜を1行ずつ入力してください（例: 3四歩）<br>
+            各行が交互に「自分」「相手」の手となります。不正な移動は検出されます。<br>
+            <strong>※ info.jsonから自動読み込み・保存されます</strong>
+        </div>
+
+        <div class="input-area">
+            <textarea id="moveInput" placeholder="棋譜を入力してください&#10;例:&#10;3四歩&#10;3六歩&#10;2二角成"></textarea>
+            <br>
+            <button onclick="executeMoves()">盤面を表示</button>
+            <button class="clear-btn" onclick="clearBoard()">クリア</button>
+        </div>
+
+        <div id="error" class="error"></div>
+        <div id="moveList"></div>
+        
+        <div class="board-container">
+            <div class="captured-pieces">
+                <div class="captured-box opponent-captured">
+                    <h3 class="opponent">相手の持ち駒</h3>
+                    <div id="opponentCaptured" class="captured-list"></div>
+                </div>
+            </div>
+            
+            <div class="board-wrapper">
+                <div class="col-labels" id="colLabels"></div>
+                <div class="board-with-labels">
+                    <div class="row-labels" id="rowLabels"></div>
+                    <div id="board" class="board"></div>
+                </div>
+            </div>
+            
+            <div class="captured-pieces">
+                <div class="captured-box player-captured">
+                    <h3 class="player">自分の持ち駒</h3>
+                    <div id="playerCaptured" class="captured-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h2>どちらの駒を動かしますか?</h2>
+            <p id="modalQuestion"></p>
+            <div id="modalChoices"></div>
+        </div>
+    </div>
+
+    <script>
+        let board = [];
+        let capturedPieces = {
+            player: [],
+            opponent: []
+        };
+        let moveChoices = {}; // 二択の記録
+
+        async function loadFromFile() {
+            try {
+                const response = await fetch('info.json');
+                if(response.ok) {
+                    const data = await response.json();
+                    document.getElementById('moveInput').value = data.moves || '';
+                    moveChoices = data.choices || {};
+                    return true;
+                }
+            } catch(err) {
+                console.log('info.jsonが見つかりません。新規作成します。');
+            }
+            return false;
+        }
+
+        async function saveToFile() {
+            const input = document.getElementById('moveInput').value;
+            const data = {
+                moves: input,
+                choices: moveChoices
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'info.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function initBoard() {
+            board = Array(9).fill(null).map(() => Array(9).fill(null));
+            capturedPieces = {
+                player: [],
+                opponent: []
+            };
+            moveChoices = {};
+            
+            // 初期配置
+            // 後手の駒（上側）
+            for(let i = 0; i < 9; i++) {
+                board[2][i] = {piece: '歩', player: 'opponent'};
+            }
+            board[0][0] = {piece: '香', player: 'opponent'};
+            board[0][8] = {piece: '香', player: 'opponent'};
+            board[0][1] = {piece: '桂', player: 'opponent'};
+            board[0][7] = {piece: '桂', player: 'opponent'};
+            board[0][2] = {piece: '銀', player: 'opponent'};
+            board[0][6] = {piece: '銀', player: 'opponent'};
+            board[0][3] = {piece: '金', player: 'opponent'};
+            board[0][5] = {piece: '金', player: 'opponent'};
+            board[0][4] = {piece: '玉', player: 'opponent'};
+            board[1][7] = {piece: '角', player: 'opponent'};
+            board[1][1] = {piece: '飛', player: 'opponent'};
+
+            // 先手の駒（下側）
+            for(let i = 0; i < 9; i++) {
+                board[6][i] = {piece: '歩', player: 'player'};
+            }
+            board[8][0] = {piece: '香', player: 'player'};
+            board[8][8] = {piece: '香', player: 'player'};
+            board[8][1] = {piece: '桂', player: 'player'};
+            board[8][7] = {piece: '桂', player: 'player'};
+            board[8][2] = {piece: '銀', player: 'player'};
+            board[8][6] = {piece: '銀', player: 'player'};
+            board[8][3] = {piece: '金', player: 'player'};
+            board[8][5] = {piece: '金', player: 'player'};
+            board[8][4] = {piece: '王', player: 'player'};
+            board[7][1] = {piece: '角', player: 'player'};
+            board[7][7] = {piece: '飛', player: 'player'};
+        }
+
+        function drawBoard() {
+            const colLabelsDiv = document.getElementById('colLabels');
+            const rowLabelsDiv = document.getElementById('rowLabels');
+            const boardDiv = document.getElementById('board');
+            
+            // 持ち駒表示
+            drawCapturedPieces();
+            
+            // 列ラベル（9〜1）
+            colLabelsDiv.innerHTML = '';
+            for(let i = 9; i >= 1; i--) {
+                const label = document.createElement('div');
+                label.className = 'col-label';
+                label.textContent = i;
+                colLabelsDiv.appendChild(label);
+            }
+            
+            // 行ラベル（一〜九）
+            const rowKanji = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
+            rowLabelsDiv.innerHTML = '';
+            for(let i = 0; i < 9; i++) {
+                const label = document.createElement('div');
+                label.className = 'row-label';
+                label.textContent = rowKanji[i];
+                rowLabelsDiv.appendChild(label);
+            }
+            
+            // 盤面（配列のcol 0が9列目、col 8が1列目）
+            boardDiv.innerHTML = '';
+            for(let row = 0; row < 9; row++) {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'row';
+                for(let col = 0; col < 9; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    if(board[row][col]) {
+                        cell.textContent = board[row][col].piece;
+                        cell.style.color = board[row][col].player === 'player' ? '#2196F3' : '#f44336';
+                    }
+                    rowDiv.appendChild(cell);
+                }
+                boardDiv.appendChild(rowDiv);
+            }
+        }
+
+        function drawCapturedPieces() {
+            const playerDiv = document.getElementById('playerCaptured');
+            const opponentDiv = document.getElementById('opponentCaptured');
+            
+            playerDiv.innerHTML = '';
+            opponentDiv.innerHTML = '';
+            
+            if(capturedPieces.player.length === 0) {
+                playerDiv.innerHTML = '<span style="color: #999;">なし</span>';
+            } else {
+                capturedPieces.player.forEach(piece => {
+                    const span = document.createElement('span');
+                    span.className = 'captured-piece';
+                    span.style.color = '#2196F3';
+                    span.textContent = piece;
+                    playerDiv.appendChild(span);
+                });
+            }
+            
+            if(capturedPieces.opponent.length === 0) {
+                opponentDiv.innerHTML = '<span style="color: #999;">なし</span>';
+            } else {
+                capturedPieces.opponent.forEach(piece => {
+                    const span = document.createElement('span');
+                    span.className = 'captured-piece';
+                    span.style.color = '#f44336';
+                    span.textContent = piece;
+                    opponentDiv.appendChild(span);
+                });
+            }
+        }
+
+        function parseMove(moveStr) {
+            const colMap = {'9': 0, '8': 1, '7': 2, '6': 3, '5': 4, '4': 5, '3': 6, '2': 7, '1': 8};
+            const rowMap = {'一': 0, '二': 1, '三': 2, '四': 3, '五': 4, '六': 5, '七': 6, '八': 7, '九': 8};
+            
+            const colChar = moveStr[0];
+            const rowChar = moveStr[1];
+            const pieceStr = moveStr.slice(2);
+            
+            if(!colMap.hasOwnProperty(colChar) || !rowMap.hasOwnProperty(rowChar)) {
+                return null;
+            }
+            
+            const col = colMap[colChar];
+            const row = rowMap[rowChar];
+            
+            let piece = null;
+            let isPromotion = false;
+            let isDrop = false;
+            
+            if(pieceStr.includes('打')) {
+                isDrop = true;
+                piece = pieceStr.replace('打', '');
+            } else if(pieceStr.includes('成')) {
+                isPromotion = true;
+                piece = pieceStr.replace('成', '');
+            } else {
+                piece = pieceStr;
+            }
+            
+            return {col, row, piece, isPromotion, isDrop};
+        }
+
+        function canMove(fromRow, fromCol, toRow, toCol, piece, player) {
+            const dr = toRow - fromRow;
+            const dc = toCol - fromCol;
+            const direction = player === 'player' ? -1 : 1;
+            
+            switch(piece) {
+                case '歩':
+                    return dc === 0 && dr === direction;
+                case '香':
+                    if(dc !== 0) return false;
+                    if(player === 'player' && dr >= 0) return false;
+                    if(player === 'opponent' && dr <= 0) return false;
+                    for(let r = fromRow + direction; r !== toRow; r += direction) {
+                        if(board[r][fromCol]) return false;
+                    }
+                    return true;
+                case '桂':
+                    return Math.abs(dc) === 1 && dr === direction * 2;
+                case '銀':
+                    if(Math.abs(dc) <= 1 && dr === direction) return true;
+                    if(Math.abs(dc) === 1 && dr === -direction) return true;
+                    return false;
+                case '金':
+                case 'と':
+                case '杏':
+                case '圭':
+                case '全':
+                    if(Math.abs(dc) <= 1 && Math.abs(dr) <= 1) {
+                        if(dc === 0) return true;
+                        if(dr === direction) return true;
+                        if(dr === 0) return true;
+                        return false;
+                    }
+                    return false;
+                case '角':
+                    if(Math.abs(dr) !== Math.abs(dc)) return false;
+                    const dRow = dr > 0 ? 1 : -1;
+                    const dCol = dc > 0 ? 1 : -1;
+                    for(let r = fromRow + dRow, c = fromCol + dCol; r !== toRow; r += dRow, c += dCol) {
+                        if(board[r][c]) return false;
+                    }
+                    return true;
+                case '飛':
+                    if(dr !== 0 && dc !== 0) return false;
+                    if(dr !== 0) {
+                        const dir = dr > 0 ? 1 : -1;
+                        for(let r = fromRow + dir; r !== toRow; r += dir) {
+                            if(board[r][fromCol]) return false;
+                        }
+                    } else {
+                        const dir = dc > 0 ? 1 : -1;
+                        for(let c = fromCol + dir; c !== toCol; c += dir) {
+                            if(board[fromRow][c]) return false;
+                        }
+                    }
+                    return true;
+                case '馬':
+                    if(Math.abs(dr) === Math.abs(dc)) {
+                        const dRow = dr > 0 ? 1 : -1;
+                        const dCol = dc > 0 ? 1 : -1;
+                        for(let r = fromRow + dRow, c = fromCol + dCol; r !== toRow; r += dRow, c += dCol) {
+                            if(board[r][c]) return false;
+                        }
+                        return true;
+                    }
+                    if(Math.abs(dr) <= 1 && Math.abs(dc) <= 1) return true;
+                    return false;
+                case '龍':
+                    if(dr === 0 || dc === 0) {
+                        if(dr !== 0) {
+                            const dir = dr > 0 ? 1 : -1;
+                            for(let r = fromRow + dir; r !== toRow; r += dir) {
+                                if(board[r][fromCol]) return false;
+                            }
+                        } else {
+                            const dir = dc > 0 ? 1 : -1;
+                            for(let c = fromCol + dir; c !== toCol; c += dir) {
+                                if(board[fromRow][c]) return false;
+                            }
+                        }
+                        return true;
+                    }
+                    if(Math.abs(dr) <= 1 && Math.abs(dc) <= 1) return true;
+                    return false;
+                case '玉':
+                case '王':
+                    return Math.abs(dr) <= 1 && Math.abs(dc) <= 1;
+            }
+            return false;
+        }
+
+        function findPieces(piece, player, targetRow, targetCol) {
+            const positions = [];
+            for(let row = 0; row < 9; row++) {
+                for(let col = 0; col < 9; col++) {
+                    if(board[row][col] && board[row][col].piece === piece && board[row][col].player === player) {
+                        if(canMove(row, col, targetRow, targetCol, piece, player)) {
+                            positions.push({row, col});
+                        }
+                    }
+                }
+            }
+            return positions;
+        }
+
+        function canDrop(piece, player, targetRow, targetCol) {
+            // マスが空いているかチェック
+            if(board[targetRow][targetCol]) return false;
+            
+            // 二歩チェック（歩を打つ場合）
+            if(piece === '歩') {
+                for(let row = 0; row < 9; row++) {
+                    if(board[row][targetCol] && board[row][targetCol].piece === '歩' && board[row][targetCol].player === player) {
+                        return false; // 同じ列に既に歩がある
+                    }
+                }
+            }
+            
+            // 行き所のない駒のチェック
+            if(piece === '歩' || piece === '香') {
+                if(player === 'player' && targetRow === 0) return false;
+                if(player === 'opponent' && targetRow === 8) return false;
+            }
+            if(piece === '桂') {
+                if(player === 'player' && targetRow <= 1) return false;
+                if(player === 'opponent' && targetRow >= 7) return false;
+            }
+            
+            return true;
+        }
+
+        function showChoice(positions, targetRow, targetCol, piece) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('modal');
+                const question = document.getElementById('modalQuestion');
+                const choices = document.getElementById('modalChoices');
+                const colNum = 9 - targetCol;
+                const rowKanji = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
+                
+                question.textContent = `${colNum}${rowKanji[targetRow]}に動かす${piece}を選んでください`;
+                choices.innerHTML = '';
+                
+                positions.forEach((pos) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'choice-btn';
+                    const fromCol = 9 - pos.col;
+                    btn.textContent = `${fromCol}${rowKanji[pos.row]}の${piece}`;
+                    btn.onclick = () => {
+                        modal.style.display = 'none';
+                        resolve(pos);
+                    };
+                    choices.appendChild(btn);
+                });
+                
+                modal.style.display = 'block';
+            });
+        }
+
+        function showDropChoice(pieces, targetRow, targetCol, player) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('modal');
+                const question = document.getElementById('modalQuestion');
+                const choices = document.getElementById('modalChoices');
+                const colNum = 9 - targetCol;
+                const rowKanji = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
+                
+                question.textContent = `${colNum}${rowKanji[targetRow]}に打つ駒を選んでください`;
+                choices.innerHTML = '';
+                
+                pieces.forEach((piece) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'choice-btn';
+                    btn.textContent = `${piece}`;
+                    btn.onclick = () => {
+                        modal.style.display = 'none';
+                        resolve(piece);
+                    };
+                    choices.appendChild(btn);
+                });
+                
+                modal.style.display = 'block';
+            });
+        }
+
+        async function applyMove(moveStr, player, moveIndex, existingChoice) {
+            const parsed = parseMove(moveStr);
+            if(!parsed) {
+                throw new Error(`無効な棋譜: ${moveStr}`);
+            }
+            
+            const {col, row, piece, isPromotion, isDrop} = parsed;
+            const rowKanji = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
+            const colNum = 9 - col;
+            const moveKey = `${moveIndex}:${colNum}${rowKanji[row]}${piece}`;
+            
+            // 駒を打つ場合
+            if(isDrop) {
+                const availablePieces = capturedPieces[player].filter(p => p === piece && canDrop(p, player, row, col));
+                
+                if(availablePieces.length === 0) {
+                    throw new Error(`不可能: ${piece}を${colNum}${rowKanji[row]}に打てません（持ち駒にないか、二歩などのルール違反です）`);
+                }
+                
+                // 持ち駒から削除
+                const idx = capturedPieces[player].indexOf(piece);
+                capturedPieces[player].splice(idx, 1);
+                
+                // 盤面に配置
+                board[row][col] = {piece: piece, player: player};
+                return null;
+            }
+            
+            // 駒を動かす場合
+            const candidates = findPieces(piece, player, row, col);
+            
+            // 動かせる駒がない場合、持ち駒から打てるかチェック
+            if(candidates.length === 0) {
+                const availablePieces = capturedPieces[player].filter(p => p === piece && canDrop(p, player, row, col));
+                
+                if(availablePieces.length === 0) {
+                    throw new Error(`不可能: ${piece}を${colNum}${rowKanji[row]}に動かせる駒がなく、打つこともできません`);
+                }
+                
+                // 複数の同じ駒がある場合は選択
+                if(availablePieces.length > 1) {
+                    await showDropChoice(availablePieces, row, col, player);
+                }
+                
+                // 持ち駒から削除
+                const idx = capturedPieces[player].indexOf(piece);
+                capturedPieces[player].splice(idx, 1);
+                
+                // 盤面に配置
+                board[row][col] = {piece: piece, player: player};
+                return null;
+            }
+            
+            let from;
+            let choiceInfo = null;
+            
+            // 既存の選択情報がある場合はそれを使用
+            if(existingChoice) {
+                const choiceColChar = existingChoice[0];
+                const choiceRowChar = existingChoice[1];
+                const colMap = {'9': 0, '8': 1, '7': 2, '6': 3, '5': 4, '4': 5, '3': 6, '2': 7, '1': 8};
+                const rowMap = {'一': 0, '二': 1, '三': 2, '四': 3, '五': 4, '六': 5, '七': 6, '八': 7, '九': 8};
+                
+                if(colMap.hasOwnProperty(choiceColChar) && rowMap.hasOwnProperty(choiceRowChar)) {
+                    const choiceCol = colMap[choiceColChar];
+                    const choiceRow = rowMap[choiceRowChar];
+                    
+                    // 指定された位置に該当する駒があるかチェック
+                    const matchingCandidate = candidates.find(c => c.row === choiceRow && c.col === choiceCol);
+                    if(matchingCandidate) {
+                        from = matchingCandidate;
+                        moveChoices[moveKey] = from;
+                        choiceInfo = existingChoice;
+                    }
+                }
+            }
+            
+            // 既存の選択情報で見つからなかった場合
+            if(!from) {
+                // 過去に選択した記録があるかチェック
+                if(moveChoices[moveKey]) {
+                    const savedChoice = moveChoices[moveKey];
+                    // 保存された位置の駒が今も存在するかチェック
+                    const stillValid = candidates.find(c => c.row === savedChoice.row && c.col === savedChoice.col);
+                    if(stillValid) {
+                        from = savedChoice;
+                        const fromCol = 9 - from.col;
+                        choiceInfo = `${fromCol}${rowKanji[from.row]}`;
+                    } else {
+                        // 保存された位置が無効な場合は再度選択
+                        if(candidates.length > 1) {
+                            from = await showChoice(candidates, row, col, piece);
+                            moveChoices[moveKey] = from; // 新しい選択を記録
+                            const fromCol = 9 - from.col;
+                            choiceInfo = `${fromCol}${rowKanji[from.row]}`;
+                        } else {
+                            from = candidates[0];
+                        }
+                    }
+                } else {
+                    // 初回の選択
+                    if(candidates.length > 1) {
+                        from = await showChoice(candidates, row, col, piece);
+                        moveChoices[moveKey] = from; // 選択を記録
+                        const fromCol = 9 - from.col;
+                        choiceInfo = `${fromCol}${rowKanji[from.row]}`;
+                    } else {
+                        from = candidates[0];
+                    }
+                }
+            }
+            
+            // 駒を取る場合は持ち駒に追加
+            if(board[row][col]) {
+                const capturedPiece = board[row][col].piece;
+                // 成り駒は元の駒に戻す
+                const originalPiece = {
+                    'と': '歩', '杏': '香', '圭': '桂', '全': '銀',
+                    '馬': '角', '龍': '飛'
+                }[capturedPiece] || capturedPiece;
+                
+                capturedPieces[player].push(originalPiece);
+            }
+            
+            board[row][col] = board[from.row][from.col];
+            board[from.row][from.col] = null;
+            
+            if(isPromotion) {
+                const promoMap = {
+                    '歩': 'と', '香': '杏', '桂': '圭', '銀': '全',
+                    '角': '馬', '飛': '龍'
+                };
+                if(promoMap[piece]) {
+                    board[row][col].piece = promoMap[piece];
+                }
+            }
+            
+            return choiceInfo;
+        }
+
+        async function executeMoves() {
+            // まずinfo.jsonから読み込む
+            await loadFromFile();
+            
+            const input = document.getElementById('moveInput').value.trim();
+            const error = document.getElementById('error');
+            const moveList = document.getElementById('moveList');
+            error.textContent = '';
+            moveList.innerHTML = '';
+            
+            if(!input) {
+                error.textContent = '棋譜を入力してください';
+                return;
+            }
+            
+            const moves = input.split('\n').filter(m => m.trim());
+            initBoard();
+            
+            let listHTML = '<div class="info"><strong>実行した手:</strong><br>';
+            let updatedMoves = [];
+            
+            try {
+                for(let i = 0; i < moves.length; i++) {
+                    const moveLine = moves[i].trim();
+                    // 既に選択情報が含まれている場合は分離
+                    const parts = moveLine.split(/\s+/);
+                    const move = parts[0];
+                    const existingChoice = parts.length > 1 ? parts[1] : null;
+                    const player = i % 2 === 0 ? 'player' : 'opponent';
+                    const playerName = i % 2 === 0 ? '自分' : '相手';
+                    
+                    listHTML += `<span class="${player}">${i + 1}. ${playerName}: ${move}</span><br>`;
+                    
+                    const choiceInfo = await applyMove(move, player, i, existingChoice);
+                    
+                    // 選択情報を含めて棋譜を更新
+                    if(choiceInfo) {
+                        updatedMoves.push(`${move} ${choiceInfo}`);
+                    } else {
+                        updatedMoves.push(move);
+                    }
+                }
+                listHTML += '</div>';
+                moveList.innerHTML = listHTML;
+                
+                // 入力欄を更新
+                document.getElementById('moveInput').value = updatedMoves.join('\n');
+                
+                // info.jsonに保存
+                await saveToFile();
+                
+                drawBoard();
+            } catch(e) {
+                error.textContent = `エラー: ${e.message}`;
+                drawBoard();
+            }
+        }
+
+        function clearBoard() {
+            document.getElementById('moveInput').value = '';
+            document.getElementById('error').textContent = '';
+            document.getElementById('moveList').innerHTML = '';
+            moveChoices = {};
+            initBoard();
+            drawBoard();
+            // クリア後も保存
+            saveToFile();
+        }
+
+        // 初期化時にinfo.jsonから読み込み
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadFromFile();
+            initBoard();
+            drawBoard();
+        });
+    </script>
+</body>
+</html>
